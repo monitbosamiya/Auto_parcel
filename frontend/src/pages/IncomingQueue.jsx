@@ -1,21 +1,33 @@
+
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, RefreshCw } from 'lucide-react';
 import api from '../services/api';
 import Navbar from '../components/Navbar';
-import { Link } from 'react-router-dom';
 
 const IncomingQueue = () => {
-  const [queueData, setQueueData] = useState({ size: 0, items: [] });
+  const [queueData, setQueueData] = useState({
+    size: 0,
+    items: []
+  });
+
   const [loading, setLoading] = useState(true);
-  const [actionMsg, setActionMsg] = useState('');
+  const [error, setError] = useState('');
 
   const fetchQueue = async () => {
     try {
       const res = await api.get('/queue/status');
+
       if (res.data.success) {
         setQueueData(res.data.data);
       }
+
+      setError('');
     } catch (err) {
       console.error('Fetch queue error:', err);
+      setError(
+        err.response?.data?.message || 'Unable to fetch incoming queue.'
+      );
     } finally {
       setLoading(false);
     }
@@ -23,130 +35,235 @@ const IncomingQueue = () => {
 
   useEffect(() => {
     fetchQueue();
+
     const interval = setInterval(fetchQueue, 5000);
+
     return () => clearInterval(interval);
   }, []);
 
-  const handleDequeue = async () => {
-    setActionMsg('');
-    try {
-      const res = await api.post('/queue/dequeue');
-      if (res.data.success) {
-        setActionMsg(`✓ Dequeued: ${res.data.data.tracking_id} (Status advanced to Sorted)`);
-        fetchQueue();
-      }
-    } catch (err) {
-      setActionMsg(err.response?.data?.message || 'Dequeue failed');
-    }
-  };
-
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-main)' }}>
-      {/* Header */}
+    <div style={{
+      minHeight: '100vh',
+      background: 'var(--bg-main)'
+    }}>
       <Navbar />
 
-      {/* Main Content */}
-      <main style={{ maxWidth: '880px', margin: '30px auto', padding: '0 16px' }}>
+      <main style={{
+        maxWidth: '1000px',
+        margin: '30px auto',
+        padding: '0 16px'
+      }}>
         <div style={{
-          background: 'var(--card-bg)',
+          background: 'white',
           borderRadius: '10px',
           border: '1px solid var(--frozen-water)',
-          boxShadow: '0 4px 14px rgba(27, 73, 101, 0.08)',
           padding: '24px'
         }}>
-          {/* Header Row */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '15px',
+            marginBottom: '22px'
+          }}>
             <div>
-              <h2 style={{ color: 'var(--yale-blue)', fontSize: '18px' }}>Warehouse Incoming Queue (Custom FIFO Queue)</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
-                Parcels ordered by arrival time. Head is processed first.
+              <h2 style={{
+                color: 'var(--yale-blue)',
+                fontSize: '20px'
+              }}>
+                Warehouse Incoming Queue
+              </h2>
+
+              <p style={{
+                color: 'var(--text-muted)',
+                fontSize: '13px',
+                marginTop: '6px'
+              }}>
+                Parcels waiting for destination sorting, arranged by arrival time.
               </p>
             </div>
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}>
               <span style={{
                 background: 'var(--pale-sky)',
                 color: 'var(--yale-blue)',
-                padding: '6px 12px',
+                padding: '8px 12px',
                 borderRadius: '6px',
                 fontWeight: 700,
                 fontSize: '13px'
               }}>
                 Queue Size: {queueData.size}
               </span>
+
               <button
-                onClick={handleDequeue}
-                disabled={queueData.size === 0}
+                onClick={fetchQueue}
                 style={{
-                  background: queueData.size === 0 ? '#ccc' : 'var(--pacific-blue)',
-                  color: 'var(--yale-blue)',
-                  padding: '8px 14px',
-                  fontSize: '13px',
-                  fontWeight: 600
+                  padding: '9px',
+                  background: 'var(--frozen-water)',
+                  color: 'var(--yale-blue)'
                 }}
               >
-                Dequeue Next (Safe FIFO)
+                <RefreshCw size={16} />
               </button>
             </div>
           </div>
 
-          {actionMsg && (
-            <div style={{ background: 'rgba(42, 157, 143, 0.1)', color: 'var(--success)', padding: '10px 14px', borderRadius: '6px', marginBottom: '16px', fontSize: '13px', border: '1px solid var(--success)' }}>
-              {actionMsg}
-            </div>
+          {error && (
+            <p style={{
+              color: 'var(--error)',
+              background: '#fff0f0',
+              padding: '12px',
+              borderRadius: '6px',
+              marginBottom: '15px',
+              fontSize: '13px'
+            }}>
+              {error}
+            </p>
           )}
 
-          {/* Visual Queue representation */}
           {loading ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Loading queue state...</p>
+            <p style={{ color: 'var(--text-muted)' }}>
+              Loading queue...
+            </p>
           ) : queueData.items.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
-              <p>The incoming queue is currently empty.</p>
-              <Link to="/register" style={{ color: 'var(--pacific-blue)', fontSize: '13px', fontWeight: 600, display: 'inline-block', marginTop: '8px' }}>
-                Register parcels to populate the queue &rarr;
+            <div style={{
+              textAlign: 'center',
+              padding: '40px 10px'
+            }}>
+              <h3 style={{ color: 'var(--yale-blue)' }}>
+                Incoming Queue is Empty
+              </h3>
+
+              <p style={{
+                color: 'var(--text-muted)',
+                fontSize: '13px',
+                marginTop: '8px'
+              }}>
+                Register parcels to populate the FIFO queue.
+              </p>
+
+              <Link
+                to="/register"
+                style={{
+                  display: 'inline-block',
+                  marginTop: '15px',
+                  color: 'var(--yale-blue)',
+                  fontWeight: 600
+                }}
+              >
+                Register Parcels →
               </Link>
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
-                <thead>
-                  <tr style={{ background: 'var(--frozen-water)', color: 'var(--yale-blue)' }}>
-                    <th style={{ padding: '10px 12px' }}>Position</th>
-                    <th style={{ padding: '10px 12px' }}>Tracking ID</th>
-                    <th style={{ padding: '10px 12px' }}>Route ID</th>
-                    <th style={{ padding: '10px 12px' }}>Arrival Time</th>
-                    <th style={{ padding: '10px 12px' }}>Role</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {queueData.items.map((item, idx) => (
-                    <tr key={item.parcel_id} style={{ borderBottom: '1px solid #eef2f5' }}>
-                      <td style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--yale-blue)' }}>
-                        {idx === 0 ? '🥇 FRONT (Next)' : `#${idx + 1}`}
-                      </td>
-                      <td style={{ padding: '10px 12px', fontFamily: 'monospace', fontWeight: 600, color: 'var(--yale-blue)' }}>
-                        {item.tracking_id}
-                      </td>
-                      <td style={{ padding: '10px 12px' }}>Route #{item.route_id}</td>
-                      <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>
-                        {new Date(item.arrival_time).toLocaleString()}
-                      </td>
-                      <td style={{ padding: '10px 12px' }}>
-                        <span style={{
-                          background: idx === 0 ? 'var(--pacific-blue)' : 'var(--pale-sky)',
-                          color: 'var(--yale-blue)',
-                          fontSize: '11px',
-                          padding: '2px 8px',
-                          borderRadius: '10px',
+            <>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{
+                  width: '100%',
+                  borderCollapse: 'collapse',
+                  fontSize: '13px',
+                  textAlign: 'left'
+                }}>
+                  <thead>
+                    <tr style={{
+                      background: 'var(--frozen-water)',
+                      color: 'var(--yale-blue)'
+                    }}>
+                      {[
+                        'Position',
+                        'Tracking ID',
+                        'Route ID',
+                        'Arrival Time',
+                        'Queue Status'
+                      ].map((heading) => (
+                        <th key={heading} style={{
+                          padding: '12px'
+                        }}>
+                          {heading}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {queueData.items.map((item, index) => (
+                      <tr
+                        key={item.parcel_id}
+                        style={{
+                          borderBottom: '1px solid #eef2f5'
+                        }}
+                      >
+                        <td style={{ padding: '12px' }}>
+                          {index === 0 ? 'HEAD (Next)' : `#${index + 1}`}
+                        </td>
+
+                        <td style={{
+                          padding: '12px',
+                          fontFamily: 'monospace',
                           fontWeight: 600
                         }}>
-                          {idx === 0 ? 'Peek / Dequeue' : 'Waiting in FIFO'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                          {item.tracking_id}
+                        </td>
+
+                        <td style={{ padding: '12px' }}>
+                          Route #{item.route_id}
+                        </td>
+
+                        <td style={{
+                          padding: '12px',
+                          color: 'var(--text-muted)'
+                        }}>
+                          {new Date(item.arrival_time).toLocaleString()}
+                        </td>
+
+                        <td style={{ padding: '12px' }}>
+                          <span style={{
+                            background: index === 0
+                              ? 'var(--pacific-blue)'
+                              : 'var(--pale-sky)',
+                            padding: '5px 9px',
+                            borderRadius: '5px',
+                            fontSize: '11px',
+                            fontWeight: 600
+                          }}>
+                            {index === 0 ? 'Next to Sort' : 'Waiting'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                marginTop: '20px'
+              }}>
+                <Link
+                  to="/sorting"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    background: 'var(--yale-blue)',
+                    color: 'white',
+                    padding: '11px 16px',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    fontWeight: 600
+                  }}
+                >
+                  Go to Destination Sorting
+                  <ArrowRight size={16} />
+                </Link>
+              </div>
+            </>
           )}
         </div>
       </main>
@@ -155,4 +272,3 @@ const IncomingQueue = () => {
 };
 
 export default IncomingQueue;
-

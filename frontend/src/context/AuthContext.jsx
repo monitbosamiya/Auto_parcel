@@ -8,12 +8,32 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    const token = localStorage.getItem('token');
-    if (savedUser && token) {
-      setUser(JSON.parse(savedUser));
-    }
-    setLoading(false);
+    const verifySession = async () => {
+      const savedUser = localStorage.getItem('user');
+      const token = localStorage.getItem('token');
+
+      if (!token || !savedUser) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // Validate token against backend (which generates a new secret on restart)
+        const res = await api.get('/auth/verify');
+        if (res.data.success) {
+          setUser(JSON.parse(savedUser));
+        } else {
+          logout();
+        }
+      } catch (err) {
+        logout();
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    verifySession();
   }, []);
 
   const login = async (username, password) => {
